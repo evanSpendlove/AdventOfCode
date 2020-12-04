@@ -1,41 +1,24 @@
 import re
 
 def validatePassports(passports) -> (int, int):
-    fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"]
+    fields = {
+            "byr": lambda x: 1920 <= int(x) <= 2002,
+            "iyr": lambda x: 2010 <= int(x) <= 2020,
+            "eyr": lambda x: 2020 <= int(x) <= 2030,
+            "pid": lambda x: re.match(r'^[0-9]{9}$', x),
+            "ecl": lambda x: re.match(r'^amb$|^blu$|^brn$|^gry$|^grn$|^hzl$|^oth$', x),
+            "hcl": lambda x: re.match(r'#[a-f0-9]{6}$', x),
+            "hgt": lambda x: ("cm" in x and (150 <= int(x.replace("cm", '')) <= 193)) or
+                             ("in" in x and (59 <= int(x.replace("in", '')) <= 76))
+    }
+
     validFields, validData = 0, 0
     for p in passports:
         p = {i.split(':')[0]:i.split(':')[1] for i in p}
-        valid = all(p.get(f) for f in fields)
-        validFields += 1 if valid else 0
-        if valid:
-            validData += 1 if validateData(p) is 1 else 0
+        validFields += all(p.get(f) for f in fields.keys())
+        validData += all(fields[f](p.get(f, "0")) and f in p for f in fields.keys())
 
     return (validFields, validData)
-
-def validateData(passport) -> bool:
-    fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"]
-    ret = 1
-    for k, v in passport.items():
-        if k == "hgt":
-            if 'cm' in v:
-                ret -= 1 if int(v[0:v.index('c')]) < 150 or int(v[0:v.index('c')]) > 193 else 0
-            elif 'in' in v:
-                ret -= 1 if int(v[0:v.index('i')]) < 59 or int(v[0:v.index('i')]) > 76 else 0
-            else:
-                ret -= 1
-        elif k == "hcl":
-            ret -= 1 if not re.match(r'^#[a-f0-9]{6}$', v) else 0
-        elif k == "ecl":
-            ret -= 1 if not re.match(r'^amb$|^blu$|^brn$|^gry$|^grn$|^hzl$|^oth$', v) else 0
-        elif k == "pid":
-            ret -= 1 if not re.match(r'^[0-9]{9}$', v)  else 0 
-        elif k == "byr":
-            ret -= 1 if int(v) < 1920 or  int(v) > 2002 else 0
-        elif k == "iyr":
-            ret -= 1 if int(v) < 2010 or int(v) > 2020 else 0
-        elif k == "eyr":
-            ret -= 1 if int(v) < 2020 or int(v) > 2030 else 0
-    return ret
 
 with open('d4.in', 'r') as f:
     data = [
@@ -43,5 +26,5 @@ with open('d4.in', 'r') as f:
         for i in f.read().split('\n\n')
     ]
     validFields, validData = validatePassports(data)
-    print(f"Part 1: Valid fields: {validFields}")
-    print(f"Part 2: Valid data: {validData}")
+    print(f"Part 1: Passports with valid fields: {validFields}")
+    print(f"Part 2: Passports with valid fields and data: {validData}")
