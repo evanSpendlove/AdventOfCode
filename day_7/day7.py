@@ -12,7 +12,7 @@ def parseBags(lines) -> dict:
         bags[outer] = inner
     return bags
 
-def totalShiny(bags) -> int:
+def totalShiny(bags: dict) -> int:
     return sum([int(containsShiny(bags, colour)) for colour in bags])
 
 def containsShiny(bags, colour) -> bool:
@@ -21,7 +21,11 @@ def containsShiny(bags, colour) -> bool:
             return True
     return False
 
+def countNestedBags(bags: dict, colour: str) -> int:
+    return sum([v + v * countNestedBags(bags, k) for k, v in bags[colour].items()])
+
 with open('input.in', 'r') as f:
     lines = [line.strip() for line in f.readlines()]
     bags = parseBags(lines)
     print(f"Total bags that can contain shiny golds: {totalShiny(bags)}")
+    print("Total bags that contained by a shiny gold bag: " + str(countNestedBags(bags, "shiny gold")))
