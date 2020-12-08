@@ -23,24 +23,35 @@ def simulateCode(start, program) -> (int, int):
         if lines[lineIdx]:
             return (-1, globalCounter)
         lines[lineIdx] = 1
-        lineIdx, globalCounter = simulateLine(lineIdx, globalCounter, program)
+
+        line = program[lineIdx].strip()
+
+        if "jmp" in line:
+            lineIdx += parseNumber(line)
+            continue
+        elif "acc" in line:
+            globalCounter += parseNumber(line)
+        lineIdx += 1
 
 def fixProgram(program) -> int:
-    swap = {"jmp":"nop", "nop":"jmp"}
+    start = current_milli_time()
     for i in range(len(program)):
         if "jmp" not in program[i] and "nop" not in program[i]:
             continue
         attempt = program.copy()
-        attempt[i] = swap[attempt[i][0:3]] + attempt[i][3:]
+        if "jmp" in attempt[i]:
+            attempt[i] = "nop" + attempt[i][3:]
+        if "nop" in program[i]:
+            attempt[i] = "jmp" + attempt[i][3:]
         success, result = simulateCode(0, attempt)
         if success is 1:
+            end = current_milli_time()
+            print(f"Time taken to fix program quadratic: {end-start}")
             return result
 
-def simulateLine(lineIdx, globalCounter, program):
+def simulateLine(lineIdx, program):
     line = program[lineIdx].strip()
-    globalCounter += parseNumber(line) if "acc" in line else 0
-    lineIdx += 1 if "jmp" not in line else lineIdx + parseNumber(line)
-    return lineIdx, globalCounter
+    return lineIdx + 1 if "jmp" not in line else lineIdx + parseNumber(line)
 
 def generateWinningStatesIter(program):
     winning = [None for i in range(len(program))]
@@ -60,7 +71,7 @@ def generateWinningStatesIter(program):
                     cycleResult.append(winning[lineIdx][0])
                     break
             winning[lineIdx] = cycleResult
-            lineIdx, _ = simulateLine(lineIdx, 0, program)
+            lineIdx = simulateLine(lineIdx, program)
     return winning
 
 
@@ -73,7 +84,7 @@ def generateWinningStates(lineIdx, program, winning, visited):
         winning[lineIdx] = -1
         return -1
     visited[lineIdx] = True
-    newIdx, _= simulateLine(lineIdx, 0, program)
+    newIdx = simulateLine(lineIdx, program)
     val = generateWinningStates(newIdx, program, winning, visited)
     winning[lineIdx] = val
     return val
@@ -172,4 +183,3 @@ with open('input.in', 'r') as f:
         print(f"Time taken for brute force approach: {bruteTime}")
         print(f"Time taken for optimal approach: {optimalTime}")
         print(f"Time taken for iterative approach: {iterTime}")
-
