@@ -1,175 +1,152 @@
 import timeit
-import time
 
-current_milli_time = lambda: int(round(time.time() * 1000))
-
-def wrapper(func, *args, **kwargs):
-    def wrapped():
-        return func(*args, **kwargs)
-    return wrapped
+# --------------------- SIMULATING PROGRAM EXECUTION ---------------------
 
 def parseNumber(line) -> int:
     sign = 1 if "+" in line else -1
     number = int(line[5:])
     return number * sign
 
-def simulateCode(start, program) -> (int, int):
-    lineIdx = start
-    lines = [0 for i in range(len(program))]
-    globalCounter = 0
-    while True:
-        if lineIdx >= len(program):
-            return (1, globalCounter)
-        if lines[lineIdx]:
-            return (-1, globalCounter)
-        lines[lineIdx] = 1
-        lineIdx, globalCounter = simulateLine(lineIdx, globalCounter, program)
+def simulateLine(i, program):
+    line = program[i].strip()
+    return i + 1 if "jmp" not in line else i + parseNumber(line)
 
-def fixProgram(program) -> int:
-    swap = {"jmp":"nop", "nop":"jmp"}
-    for i in range(len(program)):
-        if "jmp" not in program[i] and "nop" not in program[i]:
-            continue
-        attempt = program.copy()
-        attempt[i] = swap[attempt[i][0:3]] + attempt[i][3:]
-        success, result = simulateCode(0, attempt)
-        if success is 1:
-            return result
-
-def simulateLine(lineIdx, globalCounter, program):
-    line = program[lineIdx].strip()
+def simulateInstruction(i, globalCounter, program):
+    line = program[i].strip()
+    i += 1 if "jmp" not in line else parseNumber(line)
     globalCounter += parseNumber(line) if "acc" in line else 0
-    lineIdx += 1 if "jmp" not in line else lineIdx + parseNumber(line)
-    return lineIdx, globalCounter
+    return i, globalCounter
 
-def generateWinningStatesIter(program):
-    winning = [None for i in range(len(program))]
+def simulateCode(program) -> (int, int):
+    i, accumulator = 0, 0
+    visited = [0 for i in range(len(program))]
+    while True:
+        if i >= len(program):
+            return (1, accumulator)
+        if visited[i]:
+            return (-1, accumulator)
+        visited[i] = 1
+        i, accumulator = simulateInstruction(i, accumulator, program)
+
+# --------------------- COMPUTING EXITING STATES ---------------------
+
+def computeExitingIterative(program):
+    # I use a trick here to avoid having to update every value after
+    # every cycle - using lists to have a mutable variable (reference).
+    #    -> This simulates a pointer.
+    #
+    # By using lists as the cycleResult, I can make each instruction
+    # visited reference the cycleResult of the cycle that it is part of.
+    #
+    # Then, when a cycle is complete, that cycleResult is updated and
+    # all of the instructions in that cycle now hold that value.
+
+    exiting = [None for i in range(len(program))]
     for i in range(len(program)):
         cycleResult = []
         lineIdx = i
         while len(cycleResult) is 0:
             if lineIdx >= len(program):
                 cycleResult.append(1)
-                break
-            if winning[lineIdx] is not None:
-                if len(winning[lineIdx]) is 0: 
-                    winning[lineIdx] = cycleResult
+            elif exiting[lineIdx] is not None:
+                # If visited and not previously computed, there is a cycle
+                if len(exiting[lineIdx]) is 0:
+                    exiting[lineIdx] = cycleResult
                     cycleResult.append(-1)
-                    break
-                if len(winning[lineIdx]) > 0:
-                    cycleResult.append(winning[lineIdx][0])
-                    break
-            winning[lineIdx] = cycleResult
-            lineIdx, _ = simulateLine(lineIdx, 0, program)
-    return winning
+                # If visited and previously computed, use that value.
+                elif len(exiting[lineIdx]) > 0:
+                    cycleResult.append(exiting[lineIdx][0])
+            else:
+                exiting[lineIdx] = cycleResult
+                lineIdx = simulateLine(lineIdx, program)
+    return [i[0] for i in exiting]
 
-
-def generateWinningStates(lineIdx, program, winning, visited):
-    if lineIdx >= len(program):
+def generateExitingRecursive(i, program, exiting, visited):
+    if i >= len(program):
         return 1
-    if winning[lineIdx] != 0:
-        return winning[lineIdx]
-    if visited[lineIdx]:
-        winning[lineIdx] = -1
+    # If previously computed, return that value
+    if exiting[i] != 0:
+        return exiting[i]
+    # If previously visited, cycle detected
+    if visited[i]:
+        exiting[i] = -1
         return -1
-    visited[lineIdx] = True
-    newIdx, _= simulateLine(lineIdx, 0, program)
-    val = generateWinningStates(newIdx, program, winning, visited)
-    winning[lineIdx] = val
-    return val
+    visited[i] = True
+    newIdx = simulateLine(i, program)
+    exiting[i] = generateExitingRecursive(newIdx, program, exiting, visited)
+    return exiting[i]
 
-def verifyWinning(program):
-    winning_clever = [0 for i in range(len(program))]
-    visited = [False for i in range(len(program))]
-    computeWinningStates(program, winning_clever, visited)
-    winning_super_clever = generateWinningStatesIter(program)
-    print(winning_super_clever)
-
-    winning_dumb = [0 for i in range(len(program))]
+def computeExitingRecursive(program, exiting, visited):
     for i in range(len(program)):
-        winning_dumb[i], _ = simulateCode(i, program)
+        generateExitingRecursive(i, program, exiting, visited)
 
-    brokenCounter = 0
-    for i in range(len(winning_dumb)):
-        brokenCounter += 1 if winning_dumb[i] != winning_super_clever[i][0] else 0
-        print(f"{winning_dumb[i]} == {winning_super_clever[i]}")
-    print(f"verifyWinning.Broken Count: {brokenCounter}")
+# --------------------- FIXING THE PROGRAM ---------------------
 
-def computeWinningStates(program, winning, visited):
+def verifyProgram(i, program):
+    swap = {"jmp":"nop", "nop":"jmp"}
+    attempt = program.copy()
+    attempt[i] = swap[attempt[i][:3]] + attempt[i][3:]
+    return simulateCode(attempt)
+
+# Time Complexity: O(N^2)
+def fixProgramBrute(program) -> int:
+    swap = {"jmp":"nop", "nop":"jmp"}
     for i in range(len(program)):
-        generateWinningStates(i, program, winning, visited)
+        if program[i][0:3] not in swap:
+            continue
+        success, result = verifyProgram(i, program)
+        if success is 1:
+            return result
 
-def fixProgramLinearSmart(program) -> int:
-    start = current_milli_time()
-    winning = generateWinningStatesIter(program)
-    end = current_milli_time()
-    print(f"ITER: Time taken to generate winning states: {end-start}")
-    print(len(winning))
-
-    start = current_milli_time()
-    for i in range(len(program)):
-        if "jmp" not in program[i] and "nop" not in program[i]:
+# Time Complexity: O(N)
+def fixProgramLinear(exiting, program) -> int:
+    swap = {"jmp":"nop", "nop":"jmp"}
+    visited = [0 for i in range(len(program))]
+    i = 0
+    while True:
+        if visited[i]:
+            i += 1
+            continue
+        visited[i] = True
+        if program[i][0:3] not in swap:
             continue
         offset = 1 if "jmp" in program[i] else parseNumber(program[i])
-        if i + offset >= len(winning):
-            print("WTFFF" + str((i + offset)))
-        if winning[i + offset][0] == 1:
-            attempt = program.copy()
-            if "jmp" in attempt[i]:
-                attempt[i] = "nop" + attempt[i][3:]
-            if "nop" in program[i]:
-                attempt[i] = "jmp" + attempt[i][3:]
-            success, result = simulateCode(0, attempt)
-            if success is 1:
-                end = current_milli_time()
-                print(f"ITER: Time taken to fix program linear: {end-start}")
-                return result
+        if exiting[i + offset] == 1:
+            success, result = verifyProgram(i, program)
+            return result
+        i = simulateLine(i, program)
 
+def fixProgramIterative(program) -> int:
+    return fixProgramLinear(computeExitingIterative(program), program)
 
-def fixProgramLinear(program) -> int:
-    winning = [0 for i in range(len(program))]
+def fixProgramRecursive(program) -> int:
+    exiting = [0 for i in range(len(program))]
     visited = [False for i in range(len(program))]
-    start = current_milli_time()
-    computeWinningStates(program, winning, visited)
-    end = current_milli_time()
-    print(f"Time taken to generate winning states: {end-start}")
-    print(f"Length of winning {len(winning)}")
+    computeExitingRecursive(program, exiting, visited)
+    return fixProgramLinear(exiting, program)
 
-    start = current_milli_time()
-    for i in range(len(program)):
-        if "jmp" not in program[i] and "nop" not in program[i]:
-            continue
-        offset = 1 if "jmp" in program[i] else parseNumber(program[i])
-        if winning[i + offset] == 1:
-            attempt = program.copy()
-            if "jmp" in attempt[i]:
-                attempt[i] = "nop" + attempt[i][3:]
-            if "nop" in program[i]:
-                attempt[i] = "jmp" + attempt[i][3:]
-            success, result = simulateCode(0, attempt)
-            if success is 1:
-                end = current_milli_time()
-                print(f"Time taken to fix program linear: {end-start}")
-                return result
+# --------------------- TIMING AND RUNNING VARIATIONS ---------------------
+
+def wrapper(func, *args, **kwargs):
+    def wrapped():
+        return func(*args, **kwargs)
+    return wrapped
 
 with open('input.in', 'r') as f:
     program = f.readlines()
-    success, result = simulateCode(0, program)
-    verifyWinning(program)
+    success, result = simulateCode(program)
     print(f"Program terminated with: {success}. The final value was: {result}")
-    print(f"Program terminated with: 0. The final value was: {fixProgram(program)}")
-    print(f"Program terminated with: 0. The final value was: {fixProgramLinear(program)}")
-    print(f"Program terminated with: 0. The final value was: {fixProgramLinearSmart(program)}")
 
-    speedTest = True
-    if speedTest:
-        bruteFunc = wrapper(fixProgram, program)
-        optimalFunc = wrapper(fixProgramLinear, program)
-        iterFunc = wrapper(fixProgramLinearSmart, program)
-        bruteTime = timeit.timeit(bruteFunc, number=1)
-        optimalTime = timeit.timeit(optimalFunc, number=1)
-        iterTime = timeit.timeit(iterFunc, number=1)
-        print(f"Time taken for brute force approach: {bruteTime}")
-        print(f"Time taken for optimal approach: {optimalTime}")
-        print(f"Time taken for iterative approach: {iterTime}")
+    functions = [fixProgramBrute, fixProgramRecursive, fixProgramIterative]
+    for f in functions: print(f"Program terminated with: 0. The final value was: {f(program)}")
 
+    times = []
+    approaches = ["brute force", "recursive", "iterative"]
+    timeChange = lambda x, y: 100 *(1.0 - float(x)/float(y))
+    for i in range(len(functions)):
+        t = timeit.timeit(wrapper(functions[i], program), number=10) / 10.0
+        times.append(t)
+        print(f"Time taken for {approaches[i]} approach: {t}s")
+        if i > 0:
+            print(("Time improvement on previous best for %s: %.2f" % (approaches[i], timeChange(times[i], min(times[0:i])))) + "%")
+        print()
