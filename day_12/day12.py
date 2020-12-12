@@ -46,7 +46,6 @@ def navigateWithWaypoint(instructions):
             ship_i, ship_j = ship_i + di, ship_j + dj
         else:
             wp_i, wp_j, wp_dir = di, dj, new_dir
-    print(ship_i, ship_j)
     return abs(ship_i) + abs(ship_j)
 
 with open('input.in', 'r') as f:
