@@ -6,7 +6,7 @@ def parseOp(op):
 def applyBitwiseAND(mask, value):
     binValue = list(f'{value:036b}')
     for i, bit in enumerate(mask):
-        if bit == '1' or bit == '0': 
+        if bit in '10':
             binValue[i] = bit
     return int(''.join(binValue), 2)
 
@@ -25,27 +25,24 @@ def applyBitwiseOR(mask, value):
     floatingValues = [list(f'{value:036b}')]
     binaryValues = []
 
-    # Initial run over number
+    # Bitwise OR with mask
     for i, bit in enumerate(mask):
         if bit == '1':
             floatingValues[0][i] = '1'
         if bit == 'X':
             floatingValues[0][i] = 'X'
 
+    # Compute floating versions of value
     while floatingValues:
         binVal = floatingValues.pop()
-        # Find the first X.
-        firstX = binVal.index('X')
-        # Make a version with a 0 and with a 1
         versions = [binVal.copy(), binVal.copy()]
-        for i in range(len(versions)):
-            versions[i][firstX] = str(i)
-        # Add to floatingValues if X in version, else add to binaryValues
+        for i in range(2):
+            versions[i][binVal.index('X')] = str(i)
             if 'X' in versions[i]:
                 floatingValues.append(versions[i])
             else:
-                #print(versions[i])
                 binaryValues.append(int(''.join(versions[i]), 2))
+
     return binaryValues
 
 def runInitializerV2(operations):
