@@ -1,10 +1,10 @@
 def memoryGame(nums, end) -> int:
-    lastSpoken = {num: i for i, num in enumerate(nums[:-1])}
+    lastSpoken = {num: i+1 for i, num in enumerate(nums[:-1])}
     curNum = nums[-1]
     for turn in range(len(nums), end):
         prevNum = curNum
-        curNum = turn - lastSpoken.get(curNum, turn-1) - 1
-        lastSpoken[prevNum] = turn - 1
+        curNum = turn - lastSpoken.get(curNum, turn)
+        lastSpoken[prevNum] = turn
     return curNum
 
 
