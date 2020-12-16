@@ -1,52 +1,14 @@
-import sympy
-
-def rref(matrix, originalRows):
-    N, M = len(matrix), len(matrix[0])
-    i, j, k, c, m = 0, 0, 0, 0, 0
-    flag = 0
-    pro = 0.0
-
-    for i in range(N):
-        if matrix[i][i] == 0:
-            c = 1
-            while (i + c) < N and matrix[i+c][i] == 0:
-                c += 1
-            if (i+c) == N:
-                flag = 1
-                break
-            j = i
-            for k in range(N):
-                matrix[j][k], matrix[j+c][k] = matrix[j+c][k], matrix[j][k]
-                originalRows[j], originalRows[j+c] = originalRows[j+c], originalRows[j]
-                print(j, j+c)
-                print(originalRows)
-        for j in range(N):
-            if i != j:
-                pro = matrix[j][i] / matrix[i][i]
-                for k in range(N):
-                    matrix[j][k] = matrix[j][k] - matrix[i][k] * pro
-
-    return matrix, originalRows
+# RREF - should've transposed before doing RREF...
 
 # ------------- Identifying Fields-------------
 def basicRREF(matrix):
+    # counts = list(ruleCounts.values())
     for r in range(len(matrix)):
         for c in range(len(matrix[0])):
             matrix[r][c] -= 190
 
     for r in matrix:
         print(r)
-
-    rows = [i for i in range(len(matrix))]
-    reduced, newRows = rref(matrix, rows)
-    print(reduced)
-    print(newRows)
-    print()
-    print()
-    print()
-
-    for row in reduced:
-        print(row)
 
 def removeInvalidTickets(tickets, rules):
     return [t for t in tickets if validateTicket(t, rules) == 0]
@@ -59,19 +21,42 @@ def identifyFields(tickets, rules):
             for idx, field in enumerate(t):
                 if any([withinRange(field, i) for i in rules[r]]):
                     count[idx] += 1
+    for _, count in ruleCounts.items():
+        for c in range(len(count)):
+            count[c] -= 190
+
     for r in ruleCounts:
         print(ruleCounts[r])
-    countsList = list(ruleCounts.values())
-    basicRREF([row[:] for row in countsList])
 
-    for i, c in enumerate(countsList):
-        countsList[i].append(i+1)
-    print(countsList)
-    matrix = sympy.Matrix(countsList)
-    print(matrix.rref())
+    fields = ["" for i in range(len(rules))]
+    for i in range(len(rules)):
+        for rule, count in ruleCounts.items():
+            if sum(count) == 1:
+                position = count.index(1)
+                fields[position] = rule
+                print(rule, position)
+                for r in ruleCounts:
+                    ruleCounts[r][position] = 0
+    return fields
+    # Rows = rules ;; Cols = tickets
+    # counts = list(ruleCounts.values())
+    # for r in range(len(counts)):
+        # for c in range(len(counts[0])):
+            # counts[r][c] -= 190
+    # for r in counts:
+        # print(r)
+    # fields = {}
+    # for row in range(len(counts)):
+        # possibilities = sum([counts[row][col] for col in range(len(counts[0]))])
+        # if possibilities == 1:
+        # print(possibilities)
 
-def sumDepartures(fields):
-    return sum([fields[name] for name in fields if 'departure' in name])
+def productOfDepartures(myTicket, fields):
+    prod = 1
+    for idx, f in enumerate(fields):
+        if 'departure' in f:
+            prod *= myTicket[idx]
+    return prod
 
 # ------------- Validating Tickets -------------
 
@@ -110,7 +95,7 @@ def parseSections(sections):
 with open('input.in', 'r') as f:
     sections = f.read().strip().split("\n\n")
     rules, myTicket, otherTickets = parseSections(sections)
-    print(rules.keys())
     print(sum(validateTicket(t, rules) for t in otherTickets))
     otherTickets.append(myTicket)
-    identifyFields(otherTickets, rules)
+    fields = identifyFields(otherTickets, rules)
+    print(productOfDepartures(myTicket, fields))
