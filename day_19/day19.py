@@ -17,10 +17,15 @@ def part1(rules, words):
     return sum([int((re.match(r1, w) is not None)) for w in words])
 
 def part2(rules, words):
-    rules[8] = "42 | 42 8".split(' ')
-    rules[11] = "42 31 | 42 11 31".split(' ')
-    r2 = f"^{buildRegex(rules, '0')}$"
-    return sum([int((re.match(r2, w) is not None)) for w in words])
+    rule42 = buildRegex(rules, '42')
+    rule31 = buildRegex(rules, '31')
+
+    counter = 0
+    for n in range(1, 6):
+        r2 = f"^({rule42}+{rule42}{{{n}}}{rule31}{{{n}}})$"
+        for w in words:
+            counter += int((re.match(r2, w) is not None))
+    return counter
 
 
 def parseRules(data):
@@ -36,4 +41,4 @@ with open('input.in', 'r') as f:
     sections = [l.split('\n') for l in f.read().strip().split('\n\n')]
     rules, words = parseRules(sections[0]), sections[1]
     print(f"P1: total valid words: {part1(rules, words)}")
-
+    print(f"P2: total valid words: {part2(rules, words)}")
