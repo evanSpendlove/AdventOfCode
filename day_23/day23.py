@@ -1,51 +1,40 @@
-def findDestination(currentCup, cups, pickedUp):
-    targetNum = cups[currentCup] - 1
-    while True:
+def findDestinationIdx(targetNum, pickedUp, n):
+    for i in range(4):
         if targetNum < 1:
-            targetNum = max(max(cups), max(pickedUp))
+            targetNum = n
         if targetNum in pickedUp:
             targetNum -= 1
         else:
-            return cups.index(targetNum)
+            return targetNum
 
-def pickThree(cur, cups):
-    debug = False
+def scoreP1(cups):
+    return ''.join(map(str, cups[cups.index(1)+1:] + cups[:cups.index(1)]))
 
-    pickTillEnd = cups[cur+1:cur+4]
-    if debug: print(pickTillEnd)
-    if cur + 3 >= len(cups):
-        if debug: print('oh no')
-        pickFromBegin = cups[:(cur + 4 - len(cups))]
-        if debug: print(pickFromBegin)
-    else:
-        return pickTillEnd
-    return pickTillEnd + pickFromBegin
+def scoreP2(cups):
+    s = cups.index(1)
+    return cups[(s+1) % len(cups)] * cups[(s+2) % len(cups)]
 
-def score(cups):
-    start = cups.index(1)
-    nums = cups[start+1:] + cups[:start]
-    return ''.join(map(str, nums))
+# Expensive operations:
+# cups.index()
+# cups = cups[] + p + cups[] --> changed to .insert()
+# cups.remove()
 
-def moveCups(cups):
-    debug = False
-    cur = 0
-    for i in range(100):
-        if debug: print(f"Round #{i+1}: Starting cups: {cups}")
+def moveCups(cups, score):
+    cur, n = 0, len(cups)
+    for i in range(1000):
         curNum = cups[cur]
-        if debug: print(f"Cur: {cur}, Cur value: {curNum}")
-        pickedUp = pickThree(cur, cups)
-        if debug: print(f"Picked up: {pickedUp}")
+        pickedUp = cups[cur+1:cur+4]
+        if cur + 3 >= n:
+            pickedUp += cups[:(cur + 4 - n)]
         for p in pickedUp: cups.remove(p)
-        if debug: print(f"Cups after removing picked up: {cups}")
-        destination = findDestination(cups.index(curNum), cups, pickedUp)
-        if debug: print(f"Destination: {cups[destination]}")
-        cups = cups[:destination+1] + pickedUp + cups[destination+1:]
-        if debug: print(f"Cups at end of round: {cups}")
+        destination = cups.index(findDestinationIdx(curNum - 1, pickedUp, n))
+        for i in range(3):
+            cups.insert(destination+1+i, pickedUp[i])
         cur = (cups.index(curNum) + 1) % (len(cups))
-        if debug: print(f"New Cur {cups[cur]}")
-        if debug: print()
     return score(cups)
 
 with open('input.in', 'r') as f:
     cups = [int(c) for c in f.read().strip()]
-    print(moveCups(cups))
+    # print(moveCups([c for c in cups], scoreP1))
+    for i in range(len(cups)+1, 1000001): cups.append(i)
+    print(moveCups(cups, scoreP2))
