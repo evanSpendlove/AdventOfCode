@@ -1,32 +1,33 @@
-def threeSum(nums, target) -> (int, int, int):
-    nums.sort()
-    for i in range(len(nums)-2):
-        lower = i + 1
-        upper = len(nums)-1
-        while lower < upper:
-            curSum = nums[lower] + nums[upper] + nums[i]
-            if curSum == target:
-                return (nums[lower], nums[i], nums[upper])
-            elif curSum < target:
-                lower += 1
-            else:
-                upper -= 1
-    return (-1, -1, -1)
+def read_input(filename):
+    with open(filename, 'r') as f:
+        lines = f.read().strip().split('\n')
+        lines = [int(l) for l in lines]
+        return lines
 
-def twoSum2020(nums, target: int) -> (int, int):
-    remainders = set()
-    for n in nums:
-        remainder = target - n
-        if remainder in remainders:
-            return (n, remainder)
-        if n not in remainders:
-            remainders.add(n)
-    return (-1, -1)
+def count_increases(data):
+    counter = 0
+    prev = data[0]
+    for i in range(1, len(data)):
+        counter += 1 if int(data[i] > prev) else 0
+        prev = data[i]
+    return counter
 
-inputFile = open('input.txt', 'r')
-nums = [int(d) for d in inputFile.readlines()]
-x, y = twoSum2020(nums, 2020)
-print(f"Two sum product: {x * y}")
-x, y, z = threeSum(nums, 2020)
-print(f"Three sum product: {x * y * z}")
-inputFile.close()
+def compare_windows(w1, w2):
+    return sum(w2) > sum(w1)
+
+def sliding_increases(data):
+    windows = []
+    prev_window = [data[0], data[1], data[2]]
+    for i in range(1, len(data) - 1):
+        window = [data[i-1], data[i], data[i+1]]
+        windows.append(sum(window))
+    return count_increases(windows)
+
+data = read_input('input.in')
+
+count_1 = count_increases(data)
+print(f"Part 1: Count = {count_1}")
+
+count_2 = sliding_increases(data)
+print(f"Part 2: Count = {count_2}")
+
